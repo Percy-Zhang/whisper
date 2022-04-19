@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Whisper",
+    "slug": "Whisper",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "Whisper"
+}
