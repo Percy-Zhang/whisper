@@ -7,8 +7,8 @@ import { showMessage } from 'react-native-flash-message';
 export default function useGetUserHook() {
 
     const [loading, setLoading] = useState(true)
-    const [firebaseAuth, setFirebaseAuth] = useState(auth())
     const [user, setUser] = useState()
+    const firebaseAuth = auth()
 
     useEffect(() => {
         const subscriber = auth().onAuthStateChanged((user) => setUser(user))
@@ -40,7 +40,6 @@ export default function useGetUserHook() {
         return firebaseAuth.currentUser
     }
 
-
     const getUsersInRoom = uidList => {
         return firestore().collection('users').where('uid','in',uidList)
     }
@@ -52,6 +51,14 @@ export default function useGetUserHook() {
         setLoading(true)
         try {
             const status = await firebaseAuth.createUserWithEmailAndPassword(username, password)
+            await firestore()
+                .collection('users')
+                .doc(status.user.uid)
+                .set({
+                    email: status.user.email,
+                    uid: status.user.uid,
+                    created: new Date(),
+                })
             showMessage({
                 message: 'User account created & signed in!',
                 type: 'success',
@@ -91,7 +98,7 @@ export default function useGetUserHook() {
 
     const updateName = async (
         user, 
-        newName
+        newName,
     ) => {
         setLoading(true)
         try {

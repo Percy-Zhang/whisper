@@ -8,8 +8,8 @@ import { theme } from '../config';
 // phonemyatkyawnew@gmail.com
 
 export default function LoginScreen() {
-    const [username, setUsername] = useState('phonemyatkyawnew@gmail.com');
-    const [password, setPassword] = useState('password');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
     const { loading, signup, login } = useGetUserHook()
 
     const onPressSignup = () => {
@@ -45,7 +45,7 @@ export default function LoginScreen() {
                 onChangeText={[setUsername, setPassword]}
             />
             <View style={styles.buttonsWrapper}>
-                {/* <Button label={'Sign up'} onPress={onPressSignup} /> */}
+                <Button label={'Sign up'} onPress={onPressSignup} />
                 <Button label={'Log in'} onPress={onPressLogin} />
                 {/* <Button label={'Debug'} onPress={void(0)} /> */}
             </View>

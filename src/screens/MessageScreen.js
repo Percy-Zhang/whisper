@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList } from 'react-native';
 
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import useGetUserHook from '../hooks/useGetUserHook';
 import useGetRoomHook from '../hooks/useGetRoomHook';
 import { theme } from '../config';
+import MessageComponent from '../components/MessageComponent';
 
-export default function MessageScreen({ navigation }) {
+export default function MessageScreen({ navigation, route }) {
+    const [focusId, setFocusId] = useState()
     const [content, setContent] = useState()
     const [users, setUsers] = useState()
     const { getCurrentUser, getUsersInRoom, signout } = useGetUserHook()
-    const { messages, getUsers, addMessage, deleteMessage } = useGetRoomHook('lobby')
+    const { messages, getUsers, addMessage, deleteMessage } = useGetRoomHook(route.params.id)
 
     useEffect(() => {
         init()
@@ -20,7 +23,6 @@ export default function MessageScreen({ navigation }) {
         const uidList = await getUsers()
         const usersInRoom = (await getUsersInRoom(uidList).get()).docs
         const usersList = {}
-        console.log(usersInRoom)
         for (let i in usersInRoom) {
             const userInfo = usersInRoom[i].data()
             usersList[userInfo.uid] = userInfo.displayName
@@ -33,16 +35,9 @@ export default function MessageScreen({ navigation }) {
         setContent()
         const success = await addMessage(content, getCurrentUser().uid)    
     }
-    // getDisplayNameDict()
-    const navigateProfile = () => {
-        navigation.navigate('Profile', {init})
-    }
 
     const getDisplayName = sender => {
-        if (users == undefined) return 'Anonymous'
-        if (Object.keys(users).length == 0) return 'Anonymous'
-        if (users[sender] == "") return 'Anonymous'
-        return users[sender]
+        return users ? users[sender] : 'Anonymous'
     }
 
     const Button = (props) => {
@@ -53,35 +48,62 @@ export default function MessageScreen({ navigation }) {
         )
     }
 
+    const onPressMessage = (id) => {
+        if (focusId != id) setFocusId(id)
+        else setFocusId()
+    }
+
+    const onLongPressMessage = (id) => {
+        Alert.alert(
+            'Delete Message',
+            'Are you sure?',
+            [{
+                text: 'Cancel',
+                style: 'cancel',
+            },
+            {
+                text: 'Ok', 
+                onPress: () => deleteMessage(id)
+            }],
+            {cancelable: false},
+          )
+    }
+
+    const goToSettings = () => {
+        console.log()
+        navigation.navigate('MessagesSettings', {roomId:route.params.id})
+    }
+
     
 
     return (
         <View style={styles.container}>
-            {/* <Text>{'Hi, ' + user.email}</Text> */}
-            <ScrollView 
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>{route.params.id}</Text>
+                <TouchableOpacity style={styles.settingsButton} onPress={goToSettings}>
+                    <Icon name='cog' size={40} color={theme.buttonDark}/>
+                </TouchableOpacity>
+            </View>
+            <FlatList 
                 style={styles.body}
                 fadingEdgeLength={100}
                 showsVerticalScrollIndicator={false}
-            >
-                {
-                    messages && messages.map(item => {
-                        const message = item.data()
-                        const id = item.id
-                        return (
-                            <View key={id} style={message.sender == getCurrentUser()?.uid ? styles.right : styles.left}>
-                                <Text>{getDisplayName(message.sender)}</Text>
-                                <TouchableOpacity 
-                                    style={styles.messageWrapper}
-                                    onPress={() => deleteMessage(id)}
-                                >
-                                    <Text>{message.content}</Text>
-                                </TouchableOpacity>
-                            </View>
-                            // return <Text key={item.id}>{JSON.stringify(item.id)}</Text>
-                        )
-                    })
+                inverted={true}
+                data={messages ? [...messages].reverse() : messages}
+                renderItem={({item}) => 
+                    <MessageComponent 
+                        key={item.id}
+                        item={item}
+                        getCurrentUser={getCurrentUser}
+                        getDisplayName={getDisplayName}
+                        focusId={focusId}
+                        onPress={onPressMessage}
+                        onLongPress={onLongPressMessage}
+                    />
                 }
-            </ScrollView>
+            />
+
+
             <View style={styles.footer}>
                 <TextInput 
                     style={styles.textInput} 
@@ -92,10 +114,6 @@ export default function MessageScreen({ navigation }) {
                 <Button label={'Send'} onPress={sendMessage} />
             </View>
             
-            <View style={{flexDirection:'row'}}>
-                <Button label={'Log out'} onPress={signout} />
-                <Button label={'Profile'} onPress={navigateProfile} />
-            </View>
         </View>
 
     )
@@ -106,10 +124,28 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.background
     },
+    header: {
+        flexDirection: 'row',
+        backgroundColor: theme.header,
+        alignItems: 'center',
+        height: 50,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        elevation: 10,
+        zIndex: 2,
+    },
+    headerTitle: {
+        flex: 1,
+        fontSize: 20,
+        fontWeight: 'bold',
+        paddingLeft: 10,
+    },
+    settingsButton: {
+        alignSelf: 'flex-end'
+    },
     textInput: {
         flex: 1,
         paddingLeft: 5,
-        // borderWidth: 1,
         borderBottomWidth: 1,
     },
     button: {
@@ -118,23 +154,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 10,
         borderWidth: 1,
         borderRadius: 10,
-        backgroundColor: '#ccf',
-    },
-    right: {
-        alignItems: 'flex-end'
-    },
-    left: {
-        alignItems: 'flex-start'
-    },
-    messageWrapper: {
-        maxWidth: '75%',
-        backgroundColor: '#eee',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: 'black',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        marginVertical: 5,
+        backgroundColor: theme.button,
     },
     loginText: {
         fontSize: 20,
@@ -145,10 +165,11 @@ const styles = StyleSheet.create({
         margin: 15,
     },
     footer: {
+        backgroundColor: theme.header,
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 15,
         paddingHorizontal: 15,
-        // borderTopWidth: 1,
+        borderTopWidth: 1,
     },
 })
